@@ -136,6 +136,8 @@ static void print_sign(Dest* dest, PRINTF_BOOL is_negative, const Format* format
 
 static void print_format_specifier(Dest* dest, const Format* format)
 {
+	if (!(format->flags & FMT_FLAG_OCTOTHORP)) return;
+
 	switch (format->specifier)
 	{
 	case 'X': case 'x':
