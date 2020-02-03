@@ -69,7 +69,7 @@ static const char* get_format_specifier(Dest* dest, const char* format_str, Form
 
 		if ((flag != 0) && (int_value == -1))
 		{
-			if ((format_spec->flags & flag) || 
+			if ((format_spec->flags & flag) ||
 				(format_spec->width != -1) ||
 				(format_spec->precision != -1) ||
 				prec_pt
@@ -99,8 +99,8 @@ static const char* get_format_specifier(Dest* dest, const char* format_str, Form
 		}
 
 		else if (
-			(c == 'd') || (c == 'i') || (c == 'u') || 
-			(c == 'o') || (c == 'x') || (c == 'X') || 
+			(c == 'd') || (c == 'i') || (c == 'u') ||
+			(c == 'o') || (c == 'x') || (c == 'X') ||
 			(c == 'c') || (c == 's') ||
 			(c == 'p'))
 		{
@@ -110,7 +110,7 @@ static const char* get_format_specifier(Dest* dest, const char* format_str, Form
 				format_spec->precision = int_value;
 
 			format_spec->specifier = c;
-				
+
 			return format_str;
 		}
 
@@ -159,7 +159,7 @@ static void print_leading_spaces(Dest* dest, const Format* format, unsigned char
 	{
 		int chars_to_print = format->width - len;
 		char char_to_print = (format->flags & FMT_FLAG_ZERO) ? '0' : ' ';
-		for (int i = 0; i < chars_to_print; i++) 
+		for (int i = 0; i < chars_to_print; i++)
 			put_char(dest, char_to_print);
 	}
 }
@@ -171,7 +171,7 @@ static void print_after_spaces(Dest* dest, const Format* format, unsigned char l
 		(format->width > len))
 	{
 		int chars_to_print = format->width - len;
-		for (int i = 0; i < chars_to_print; i++) 
+		for (int i = 0; i < chars_to_print; i++)
 			put_char(dest, ' ');
 	}
 }
@@ -263,7 +263,7 @@ static void print_u(Dest* dest, const Format* format, unsigned value)
 	if (format->specifier == 'p') // zeros before pointer
 	{
 		unsigned char zeros_count = len - real_len;
-		for (unsigned char i = 0; i < zeros_count; i++) 
+		for (unsigned char i = 0; i < zeros_count; i++)
 			put_char(dest, '0');
 	}
 	print_uint(dest, value, base, upper_case);
@@ -274,7 +274,7 @@ static void print_u(Dest* dest, const Format* format, unsigned value)
 
 static void print_s(Dest* dest, const char* str)
 {
-	while (*str) 
+	while (*str)
 		put_char(dest, *str++);
 }
 
@@ -294,7 +294,7 @@ static void print_by_format_specifier(Dest* dest, const Format* format, va_list*
 		print_s(dest, va_arg(*arg_ptr, const char*));
 		break;
 
-	case 'с':
+	case 'c':
 		put_char(dest, va_arg(*arg_ptr, unsigned) && 0xFF);
 		break;
 	}
