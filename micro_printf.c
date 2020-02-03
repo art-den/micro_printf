@@ -151,7 +151,7 @@ static void print_format_specifier(Dest* dest, const Format* format)
 	}
 }
 
-static void print_leading_spaces(Dest* dest, const Format* format, unsigned char len)
+static void print_leading_spaces(Dest* dest, const Format* format, int len)
 {
 	if (!(format->flags & FMT_FLAG_MINUS) &&
 		(format->width != -1) &&
@@ -164,7 +164,7 @@ static void print_leading_spaces(Dest* dest, const Format* format, unsigned char
 	}
 }
 
-static void print_after_spaces(Dest* dest, const Format* format, unsigned char len)
+static void print_after_spaces(Dest* dest, const Format* format, int len)
 {
 	if ((format->flags & FMT_FLAG_MINUS) &&
 		(format->width != -1) &&
@@ -272,10 +272,34 @@ static void print_u(Dest* dest, const Format* format, unsigned value)
 	print_after_spaces(dest, format, len);
 }
 
-static void print_s(Dest* dest, const char* str)
+static void print_s(Dest* dest, const Format* format, const char* str)
 {
-	while (*str)
-		put_char(dest, *str++);
+	// find string len
+	int len = 0;
+	for (; str[len]; len++) {}
+
+	// leading spaces or zeros
+	print_leading_spaces(dest, format, len);
+
+	// string
+	while (*str) put_char(dest, *str++);
+
+	// after spaces or zeros
+	print_after_spaces(dest, format, len);
+}
+
+static void print_c(Dest* dest, const Format* format, char value)
+{
+	int len = 1;
+
+	// leading spaces or zeros
+	print_leading_spaces(dest, format, len);
+
+	// charaster
+	put_char(dest, value);
+
+	// after spaces or zeros
+	print_after_spaces(dest, format, len);
 }
 
 static void print_by_format_specifier(Dest* dest, const Format* format, va_list* arg_ptr)
@@ -291,16 +315,16 @@ static void print_by_format_specifier(Dest* dest, const Format* format, va_list*
 		break;
 
 	case 's':
-		print_s(dest, va_arg(*arg_ptr, const char*));
+		print_s(dest, format, va_arg(*arg_ptr, const char*));
 		break;
 
 	case 'c':
-		put_char(dest, va_arg(*arg_ptr, unsigned) && 0xFF);
+		print_c(dest, format, va_arg(*arg_ptr, unsigned) && 0xFF);
 		break;
 	}
 }
 
-int base_printf(PrintfCallBack callback, void* data, const char* format_str, va_list* arg_ptr)
+int cb_vprintf(PrintfCallBack callback, void* data, const char* format_str, va_list arg_ptr)
 {
 	Format format_spec;
 	Dest dest;
@@ -317,7 +341,7 @@ int base_printf(PrintfCallBack callback, void* data, const char* format_str, va_
 		{
 			format_str = get_format_specifier(&dest, format_str, &format_spec);
 			if (format_spec.specifier != 0)
-				print_by_format_specifier(&dest, &format_spec, arg_ptr);
+				print_by_format_specifier(&dest, &format_spec, &arg_ptr);
 		}
 		else
 		{
@@ -326,6 +350,15 @@ int base_printf(PrintfCallBack callback, void* data, const char* format_str, va_
 	}
 
 	return dest.chars_count;
+}
+
+int cb_printf(PrintfCallBack callback, void* data, const char* format_str, ...)
+{
+	va_list arg_list;
+	va_start(arg_list, format_str);
+	int result = cb_vprintf(callback, data, format_str, arg_list);
+	va_end(arg_list);
+	return result;
 }
 
 static int snprintf_callback(void* data, char character)
@@ -343,16 +376,22 @@ static int snprintf_callback(void* data, char character)
 
 int snprintf(char* buffer, unsigned buffer_len, const char* format_str, ...)
 {
+	va_list arg_list;
+	va_start(arg_list, format_str);
+	int result = vsnprintf(buffer, buffer_len, format_str, arg_list);
+	va_end(arg_list);
+	return result;
+}
+
+int vsnprintf(char* buffer, unsigned buffer_len, const char* format_str, va_list arg_ptr)
+{
 	SNPrintfData data;
 	data.buffer_pos = buffer;
 	data.buffer_end = buffer + buffer_len;
 
-	va_list arg_list;
-	va_start(arg_list, format_str);
-	int result = base_printf(snprintf_callback, &data, format_str, &arg_list);
-	va_end(arg_list);
+	int result = cb_vprintf(snprintf_callback, &data, format_str, arg_ptr);
 
-	// string null terminator
+	// add string null terminator
 	if (snprintf_callback(&data, 0))
 		result++;
 	else
