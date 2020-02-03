@@ -9,7 +9,7 @@ extern "C" {
 
 int snprintf(char* buffer, unsigned buffer_len, const char* format_str, ...);
 
-typedef int (*PrintfCallBack)(void* data, char charaster);
+typedef int (*PrintfCallBack)(void* data, char charañter);
 int base_printf(PrintfCallBack callback, void* data, const char* format_str, va_list* arg_ptr);
 
 #ifdef __cplusplus

@@ -328,13 +328,13 @@ int base_printf(PrintfCallBack callback, void* data, const char* format_str, va_
 	return dest.chars_count;
 }
 
-static int snprintf_callback(void* data, char charaster)
+static int snprintf_callback(void* data, char character)
 {
 	SNPrintfData* sprintf_data = (SNPrintfData*)data;
 
 	if (sprintf_data->buffer_pos != sprintf_data->buffer_end)
 	{
-		*sprintf_data->buffer_pos++ = charaster;
+		*sprintf_data->buffer_pos++ = character;
 		return 1;
 	}
 
