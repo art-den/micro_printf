@@ -245,6 +245,14 @@ static void print_u(Dest* dest, const Format* format, unsigned value)
 
 	// find length
 	unsigned char real_len = find_integer_len(value, base);
+	if (format->flags & FMT_FLAG_OCTOTHORP)
+	{
+		if ((format->specifier == 'x') || (format->specifier == 'X'))
+			real_len += 2;
+		else if (format->specifier == 'o')
+			real_len++;
+	}
+
 	unsigned char len = (format->specifier != 'p') ? real_len : 2 * sizeof(void*);
 
 	// format specifier
@@ -319,7 +327,7 @@ static void print_by_format_specifier(Dest* dest, const Format* format, va_list*
 		break;
 
 	case 'c':
-		print_c(dest, format, va_arg(*arg_ptr, unsigned) && 0xFF);
+		print_c(dest, format, va_arg(*arg_ptr, unsigned) & 0xFF);
 		break;
 	}
 }
