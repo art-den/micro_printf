@@ -11,7 +11,7 @@ int snprintf(char* buffer, unsigned buffer_len, const char* format_str, ...);
 
 int vsnprintf(char* buffer, unsigned buffer_len, const char* format_str, va_list arg_ptr);
 
-typedef int (*PrintfCallBack)(void* data, char charañter);
+typedef int (*PrintfCallBack)(void* data, char character);
 
 int cb_printf(PrintfCallBack callback, void* data, const char* format_str, ...);
 
