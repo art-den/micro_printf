@@ -34,7 +34,7 @@ typedef struct SNPrintfData_
 
 static PRINTF_BOOL put_char(Dest* dest, char character)
 {
-	PRINTF_BOOL done = dest->callback(dest->data, character);
+	PRINTF_BOOL done = dest->callback ? dest->callback(dest->data, character) : PRINTF_TRUE;
 	if (done) dest->chars_count++;
 	return done;
 }
