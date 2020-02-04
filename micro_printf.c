@@ -191,14 +191,6 @@ static void print_uint_impl(Dest* dest, unsigned value, unsigned base, PRINTF_BO
 	put_char(dest, char_to_print);
 }
 
-static void print_uint(Dest* dest, unsigned value, unsigned base, PRINTF_BOOL upper_case)
-{
-	if (value == 0)
-		put_char(dest, '0');
-	else
-		print_uint_impl(dest, value, base, upper_case);
-}
-
 static unsigned char find_integer_len(unsigned value, unsigned base)
 {
 	unsigned char len = 0;
@@ -228,7 +220,7 @@ static void print_i(Dest* dest, const Format* format, int value)
 		print_sign(dest, is_negative, format);
 
 	// integer
-	print_uint(dest, value, 10, PRINTF_FALSE);
+	print_uint_impl(dest, value, 10, PRINTF_FALSE);
 
 	// after spaces or zeros
 	print_after_spaces(dest, format, len);
@@ -274,7 +266,7 @@ static void print_u(Dest* dest, const Format* format, unsigned value)
 		for (unsigned char i = 0; i < zeros_count; i++)
 			put_char(dest, '0');
 	}
-	print_uint(dest, value, base, upper_case);
+	print_uint_impl(dest, value, base, upper_case);
 
 	// after spaces or zeros
 	print_after_spaces(dest, format, len);

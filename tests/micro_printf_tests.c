@@ -26,6 +26,7 @@ static void test_misk()
 
 static void test_integer()
 {
+	check("0",       "%i",      0);
 	check("10",      "%i",      10);
 	check("-123",    "%d",      -123);
 	check("[10]",    "[%i]",    10);
