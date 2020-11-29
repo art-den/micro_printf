@@ -1,3 +1,7 @@
+#ifdef MICRO_PRINTF_FLOAT
+#include <float.h>
+#endif
+
 #include "micro_printf.h"
 
 #define PRINTF_BOOL unsigned char
@@ -39,6 +43,17 @@ static PRINTF_BOOL put_char(Dest* dest, char character)
 	return done;
 }
 
+static PRINTF_BOOL print_simple_string(Dest* dest, const char* string)
+{
+	while (*string)
+	{
+		PRINTF_BOOL ok = put_char(dest, *string++);
+		if (ok == PRINTF_FALSE) return PRINTF_FALSE;
+	}
+	return PRINTF_TRUE;
+}
+
+
 static const char* get_format_specifier(Dest* dest, const char* format_str, Format* format_spec)
 {
 	format_spec->flags = 0;
@@ -55,7 +70,8 @@ static const char* get_format_specifier(Dest* dest, const char* format_str, Form
 
 	const char* initial_format = format_str;
 	int int_value = -1;
-	PRINTF_BOOL prec_pt = PRINTF_FALSE;
+
+	PRINTF_BOOL width_defined = PRINTF_FALSE;
 
 	for (;;)
 	{
@@ -67,28 +83,17 @@ static const char* get_format_specifier(Dest* dest, const char* format_str, Form
 			(c == '0') ? FMT_FLAG_ZERO :
 			(c == '#') ? FMT_FLAG_OCTOTHORP : 0;
 
-		if ((flag != 0) && (int_value == -1))
+		if ((flag != 0) && !width_defined && (int_value == -1))
 		{
-			if ((format_spec->flags & flag) ||
-				(format_spec->width != -1) ||
-				(format_spec->precision != -1) ||
-				prec_pt
-			)
-				break;
-			else
-				format_spec->flags |= flag;
+			if (flag & format_spec->flags) break;
+			format_spec->flags |= flag;
 		}
 
-		else if (c == '.')
+		else if ((c == '.') && !width_defined)
 		{
-			if (prec_pt == PRINTF_FALSE)
-			{
-				format_spec->width = int_value;
-				prec_pt = PRINTF_TRUE;
-				int_value = -1;
-			}
-			else
-				break;
+			width_defined = PRINTF_TRUE;
+			format_spec->width = int_value;
+			int_value = -1;
 		}
 
 		else if ((c >= '0') && (c <= '9'))
@@ -99,12 +104,15 @@ static const char* get_format_specifier(Dest* dest, const char* format_str, Form
 		}
 
 		else if (
-			(c == 'd') || (c == 'i') || (c == 'u') ||
-			(c == 'o') || (c == 'x') || (c == 'X') ||
-			(c == 'c') || (c == 's') ||
-			(c == 'p'))
+			   (c == 'd') || (c == 'i') || (c == 'u') 
+			|| (c == 'o') || (c == 'x') || (c == 'X') 
+			|| (c == 'c') || (c == 's') || (c == 'p')
+#ifdef MICRO_PRINTF_FLOAT
+			|| (c == 'f') || (c == 'F')
+#endif
+		)
 		{
-			if (prec_pt == PRINTF_FALSE)
+			if (!width_defined)
 				format_spec->width = int_value;
 			else
 				format_spec->precision = int_value;
@@ -282,7 +290,7 @@ static void print_s(Dest* dest, const Format* format, const char* str)
 	print_leading_spaces(dest, format, len);
 
 	// string
-	while (*str) put_char(dest, *str++);
+	print_simple_string(dest, str);
 
 	// after spaces or zeros
 	print_after_spaces(dest, format, len);
@@ -301,6 +309,122 @@ static void print_c(Dest* dest, const Format* format, char value)
 	// after spaces or zeros
 	print_after_spaces(dest, format, len);
 }
+
+#ifdef MICRO_PRINTF_FLOAT
+static void print_f(Dest* dest, const Format* format, double value)
+{
+	int precision = format->precision;
+	if (precision == -1) precision = 6;
+
+	if (value != value) // nan
+	{
+		print_simple_string(dest, "nan");
+		return;
+	}
+
+	if (value > FLT_MAX) // +inf
+	{
+		print_simple_string(dest, "+inf");
+		return;
+	}
+
+	if (value < -FLT_MAX) // -inf
+	{
+		print_simple_string(dest, "-inf");
+		return;
+	}
+	
+	PRINTF_BOOL is_negative = value < 0;
+	if (is_negative)
+		value = -value;
+
+	// do rounding for last digit
+
+	double round = 0.5;
+	for (int i = 0; i < precision; i++)
+		round /= 10.0;
+	value += round;
+
+	// start calculate all text len
+
+	int len = 0;
+
+	// size for sign
+	if (is_negative || (format->flags & (FMT_FLAG_PLUS| FMT_FLAG_SPACE)))
+		len++;
+
+	// size for integral part
+	int integral_len = 0;
+	double div = 1;
+	PRINTF_BOOL is_greater_eq_1 = value >= 1.0;
+	if (is_greater_eq_1)
+	{
+		while (value > div)
+		{
+			div *= 10.0;
+			len++;
+			integral_len++;
+		}
+		div /= 10;
+	}
+	else
+	{
+		len++;
+	}
+
+	// size for point
+
+	if (precision != 0)
+		len++;
+
+	// size for decimal part
+
+	len += precision;
+
+	// leading spaces or zeros
+
+	print_leading_spaces(dest, format, len);
+
+	// print sign
+
+	print_sign(dest, is_negative, format);
+
+	// print integral part
+
+	if (is_greater_eq_1)
+	{
+		while (integral_len--)
+		{
+			int int_val = (int)(value / div);
+			put_char(dest, '0' + int_val);
+			value -= int_val * div;
+			div /= 10;
+		}
+	}
+	else
+	{
+		put_char(dest, '0');
+	}
+
+	// print decimal part
+
+	if (precision)
+		put_char(dest, '.');
+
+	while (precision)
+	{
+		value *= 10.0;
+		int int_val = (int)value;
+		put_char(dest, '0' + int_val);
+		value -= int_val;
+		--precision;
+	}
+
+	// after spaces
+
+	print_after_spaces(dest, format, len);
+}
+#endif
 
 static void print_by_format_specifier(Dest* dest, const Format* format, va_list* arg_ptr)
 {
@@ -321,6 +445,12 @@ static void print_by_format_specifier(Dest* dest, const Format* format, va_list*
 	case 'c':
 		print_c(dest, format, va_arg(*arg_ptr, unsigned) & 0xFF);
 		break;
+
+#ifdef MICRO_PRINTF_FLOAT
+	case 'f': case 'F':
+		print_f(dest, format, va_arg(*arg_ptr, double));
+		break;
+#endif
 	}
 }
 
