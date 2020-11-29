@@ -129,19 +129,6 @@ static const char* get_format_specifier(Dest* dest, const char* format_str, Form
 	return initial_format;
 }
 
-static void print_sign(Dest* dest, PRINTF_BOOL is_negative, const Format* format)
-{
-	if (is_negative)
-		put_char(dest, '-');
-	else
-	{
-		if (format->flags & FMT_FLAG_PLUS)
-			put_char(dest, '+');
-		else if (format->flags & FMT_FLAG_SPACE)
-			put_char(dest, ' ');
-	}
-}
-
 static void print_format_specifier(Dest* dest, const Format* format)
 {
 	if (!(format->flags & FMT_FLAG_OCTOTHORP)) return;
@@ -159,6 +146,19 @@ static void print_format_specifier(Dest* dest, const Format* format)
 	}
 }
 
+static void print_sign(Dest* dest, const Format* format, PRINTF_BOOL is_negative)
+{
+	if (is_negative)
+		put_char(dest, '-');
+	else
+	{
+		if (format->flags & FMT_FLAG_PLUS)
+			put_char(dest, '+');
+		else if (format->flags & FMT_FLAG_SPACE)
+			put_char(dest, ' ');
+	}
+}
+
 static void print_leading_spaces(Dest* dest, const Format* format, int len)
 {
 	if (!(format->flags & FMT_FLAG_MINUS) &&
@@ -170,6 +170,17 @@ static void print_leading_spaces(Dest* dest, const Format* format, int len)
 		for (int i = 0; i < chars_to_print; i++)
 			put_char(dest, char_to_print);
 	}
+}
+
+static void print_sign_and_leading_spaces(Dest* dest, const Format* format, PRINTF_BOOL is_negative, int len)
+{
+	if (format->flags & FMT_FLAG_ZERO)
+		print_sign(dest, format, is_negative);
+
+	print_leading_spaces(dest, format, len);
+
+	if (!(format->flags & FMT_FLAG_ZERO))
+		print_sign(dest, format, is_negative);
 }
 
 static void print_after_spaces(Dest* dest, const Format* format, int len)
@@ -216,21 +227,13 @@ static void print_i(Dest* dest, const Format* format, int value)
 	unsigned char len = find_integer_len(value, 10);
 	if ((format->flags & (FMT_FLAG_PLUS | FMT_FLAG_SPACE)) || is_negative) len++;
 
-	// sign
-	if (format->flags & FMT_FLAG_ZERO)
-		print_sign(dest, is_negative, format);
-
-	// leading spaces or zeros
-	print_leading_spaces(dest, format, len);
-
-	// sign
-	if (!(format->flags & FMT_FLAG_ZERO))
-		print_sign(dest, is_negative, format);
+	// sign and leading spaces or zeros
+	print_sign_and_leading_spaces(dest, format, is_negative, len);
 
 	// integer
 	print_uint_impl(dest, value, 10, PRINTF_FALSE);
 
-	// after spaces or zeros
+	// after spaces
 	print_after_spaces(dest, format, len);
 }
 
@@ -381,13 +384,8 @@ static void print_f(Dest* dest, const Format* format, double value)
 
 	len += precision;
 
-	// leading spaces or zeros
-
-	print_leading_spaces(dest, format, len);
-
-	// print sign
-
-	print_sign(dest, is_negative, format);
+	// print sign, leading spaces or zeros
+	print_sign_and_leading_spaces(dest, format, is_negative, len);
 
 	// print integral part
 
